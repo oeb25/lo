@@ -2,6 +2,7 @@
 
 typedef struct Dog {
     char* name;
+    int age;
 } Dog;
 
 int factorial(int x) {
@@ -18,18 +19,29 @@ int main() {
     Dog fiddo;
     char* block_name1;
     {
-        printf("%d we are printing in here!\n", 123);
-        block_name1 = "Fiddo";
+        char* name = "Fiddo";
+        printf("We\'ll call him %s!\n", name);
+        block_name1 = name;
     };
     fiddo.name = block_name1;
-    for (int i = 0; i < 36; ++i) {
-        printf("factoriall(%d) = %d\n", i, factorial(i));
+    int if_block_name_2;
+    if (1 > 2) {
+        if_block_name_2 = 4;
+    } else {
+        if_block_name_2 = 5;
     };
-    char* block_name2;
+    fiddo.age = if_block_name_2;
+    printf("%s\'s age is %d in human years and %d in dog years!\n", fiddo.name, fiddo.age, factorial(fiddo.age));
+    for (int i = 0; i < fiddo.age + 1; ++i) {
+        printf("factorial(%d) = %d\n", i, factorial(i));
+    };
+    printf("Who knew dog years where calculated using factorial!\n");
+    int block_name3;
     {
-        printf("%d\n", 1337);
-        block_name2 = fiddo.name;
+        printf("Happy birthday %s!\n", fiddo.name);
+        fiddo.age += 1;
+        block_name3 = fiddo.age;
     };
-    printf("%d %s\n", factorial(19), block_name2);
+    printf("%s is now %d years old!\n", fiddo.name, block_name3);
     return 0;
 }
