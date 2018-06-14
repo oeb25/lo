@@ -113,7 +113,7 @@ enum Token<'a> {
 enum LexState {
     Initial(usize),
     Operator(Operator),
-    String(char, usize),
+    String(char, bool, usize),
     Ident(usize),
     Number(usize),
     Float(usize),
@@ -134,7 +134,7 @@ fn lex<'a>(input: &'a str) -> Tokens<'a> {
                 ' ' | '\n' | '\t' => Initial(s),
                 c if c.is_alphabetic() => Ident(i),
                 c if c.is_numeric() => Number(i),
-                '\'' => String(c, i),
+                '\'' => String(c, false, i),
                 c => {
                     if let Some(sep) = Seperator::try_from_char(c) {
                         tokens.push(sep.into());
@@ -173,11 +173,13 @@ fn lex<'a>(input: &'a str) -> Tokens<'a> {
                     }
                 }
             },
-            String(cc, s) if c == cc => {
+            String(cc, true, s) => String(cc, false, s),
+            String(cc, _, s) if c == '\\' => String(cc, true, s),
+            String(cc, _, s) if c == cc => {
                 tokens.push(Token::String(&input[s + 1..i]));
                 Initial(i)
             }
-            String(cc, s) => String(cc, s),
+            String(cc, _, s) => String(cc, false, s),
             Number(s) => match c {
                 c if c.is_numeric() => Number(s),
                 '.' => Float(s),
@@ -718,7 +720,7 @@ fn parse_expr<'a>(input: &mut Tokens<'a>) -> Expression<'a> {
     rec_parse_expr(input, 0)
 }
 
-pub fn parse_str(src: &str) -> Document {
+pub fn parse_str<'a>(src: &'a str) -> Document<'a> {
     let mut tokens = lex(&src);
     parse(&mut tokens)
 }

@@ -24,6 +24,27 @@ pub enum Operator {
     Less,
 }
 
+impl Operator {
+    pub fn to_str(&self) -> &str {
+        use ast::Operator::*;
+        match self {
+            Divide => "/",
+            Equal => "=",
+            Dot => ".",
+            Star => "*",
+            Plus => "+",
+            Hyphen => "-",
+            Range => "..",
+            PlusEqual => "+=",
+            DoubleEqual => "==",
+            ExclamationMark => "!",
+            NotEqual => "!=",
+            Greater => ">",
+            Less => "<",
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Seperator {
     OpenParen,

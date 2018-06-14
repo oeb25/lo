@@ -1,54 +1,6 @@
-uniforms {
-	tex: sampler2D,
-    scale: float,
-}
-
-fun sampleTex(coords: vec2): vec3 {
-    let color = vec3(texture(tex, coords));
-    if scale != 2.0 {
-        color
-    } else {
-        let brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
-        if brightness > 0.04 {
-            color
-        } else {
-            vec3(0)
-        }
-    }
-}
-
-struct VSOut {
-    tex_coords: vec2,
-}
-
-fun vert(): VSOut {
-    let result: VSOut;
-
-    result.tex_coords = vec2(1.0, 0.0);
-
-    result
-}
-
-fun frag(vs: VSOut): vec3 {
-    let tex_offset = 1.0 / textureSize(tex, 0);
-
-    let meh = 5 + 10 * 2 + 13;
-    
-    let c = sampleTex(vs.tex_coords);
-    
-    let horizontal = mod(scale, 2) == 0;
-    
-    for i in 0..5 {
-        let move_by = if horizontal {
-            vec2(tex_offset.x * i, 0)
-        } else {
-            vec2(0, tex_offset.y * i)
-        };
-        c += sampleTex(vs.tex_coords + move_by);
-        c += sampleTex(vs.tex_coords - move_by);
-    };
-
-    c
+struct Dog {
+    name: str,
+    age: int,
 }
 
 fun factorial(x: int): int {
@@ -60,34 +12,29 @@ fun factorial(x: int): int {
 }
 
 fun main(): int {
-    let x = {
-        let y = 4;
-        1 + 2 - (3 - y)
+    let fiddo: Dog;
+    fiddo.name = {
+        let name = 'Fiddo';
+        printf('We\'ll call him %s!\n', name);
+        name
+    };
+    fiddo.age = if 1 > 2 {
+        4
+    } else {
+        5
     };
 
-    let z = factorial(if x > 2 { x } else { 15 });
+    printf('%s\'s age is %d in human years and %d in dog years!\n', fiddo.name, fiddo.age, factorial(fiddo.age));
 
-    let a = if 1 > {1 + 2} {
-        12
-    } else {
-        factorial(10)
+    for i in 0..fiddo.age + 1 {
+        printf('factorial(%d) = %d\n', i, factorial(i));
     };
 
-    if a > 12 {
-        0
-    } else {
-        a
-    }
-}
-
-fun factorial(x: int): int {
-    if x > 1 {
-        x * factorial(x - 1)
-    } else {
-        x
-    }
-}
-
-fun main(): int {
-    12
+    printf('Who knew dog years where calculated using factorial!\n');
+    printf('%s is now %d years old!\n', fiddo.name, {
+        printf('Happy birthday %s!\n', fiddo.name);
+        fiddo.age += 1;
+        fiddo.age
+    });
+    0
 }

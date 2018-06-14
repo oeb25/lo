@@ -1,6 +1,6 @@
 use ast::{
-    Block, Expression, ExpressionKind, FunctionDef, Literal, Operator, Primitive,
-    StructDef, Type, Program,
+    Block, Expression, ExpressionKind, FunctionDef, Literal, Operator, Primitive, Program,
+    StructDef, Type,
 };
 pub use parser;
 
@@ -378,6 +378,23 @@ impl<'a> Sources<'a> {
 
             dot(vec3, vec3): float
             mod(float, int): float
+
+            // This is a mess...
+            printf(str): void
+            printf(str, int): void
+            printf(str, str): void
+            printf(str, str, str): void
+            printf(str, int, str): void
+            printf(str, int, int): void
+            printf(str, str, int): void
+            printf(str, str, str, str): void
+            printf(str, int, str, str): void
+            printf(str, int, int, str): void
+            printf(str, str, int, str): void
+            printf(str, str, str, int): void
+            printf(str, int, str, int): void
+            printf(str, int, int, int): void
+            printf(str, str, int, int): void
         };
 
         scope.register_struct(
@@ -428,7 +445,13 @@ impl<'a> Sources<'a> {
                         let func = FunctionDef::infer(&mut scope, func_decl);
                         functions.insert(func_decl.name, func);
                     }
-                    parser::Decleration::Struct(_) => {}
+                    parser::Decleration::Struct(s) => {
+                        let s = StructDef {
+                            name: s.name,
+                            fields: s.fields.clone(),
+                        };
+                        structs.insert(s.name, s);
+                    }
                     parser::Decleration::Uniforms { uniforms: us } => {
                         for (name, typ) in us {
                             uniforms.insert(*name, typ.clone());
