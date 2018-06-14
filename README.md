@@ -1,6 +1,6 @@
-# Lez
+# lo
 
-Lez is a tiny but expressive compiled programming language.
+lo is a tiny but expressive compiled programming language.
 
 ```d
 struct Dog {
@@ -59,22 +59,22 @@ fun main(): int {
 */
 ```
 
-## Building Lez
+## Building lo
 
-Building Lez requires a Rust compiler running nightly (currently written using `rustc 1.28.0-nightly`). Creating the binary is as simple as running
+Building lo requires a Rust compiler running nightly (currently written using `rustc 1.28.0-nightly`). Creating the binary is as simple as running
 
 ```bash
 $ cargo build --release
 ```
 
-Now the Lez compiler can be found at `./target/release/lez`, and moved to your path if you so desire.
+Now the lo compiler can be found at `./target/release/lo`, and moved to your path if you so desire.
 
 ## Running a program
 
-To run a program written in Lez, one must first run it trough the previously built compiler. The only current backend is C, but more are planed.
+To run a program written in lo, one must first run it trough the previously built compiler. The only current backend is C, but more are planed.
 
 ```bash
-$ ./target/release/lez hello.lez --gcc hello
+$ ./target/release/lo hello.lo --gcc hello
 $ ./hello
 ```
 

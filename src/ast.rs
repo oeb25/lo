@@ -1,8 +1,33 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, borrow::Cow};
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Symbol<'a>(Cow<'a, str>);
+
+impl<'a, T> From<T> for Symbol<'a>
+where
+    T: Into<Cow<'a, str>>,
+{
+    fn from(t: T) -> Symbol<'a> {
+        Symbol(t.into())
+    }
+}
+
+impl<'a> ::std::fmt::Display for Symbol<'a> {
+    fn fmt(&self, writer: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        write!(writer, "{}", self.0)
+    }
+}
+
+impl<'a> ::std::ops::Deref for Symbol<'a> {
+    type Target = str;
+    fn deref<'b>(&'b self) -> &'b str {
+        &self.0
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal<'a> {
-    String(&'a str),
+    String(Cow<'a, str>),
     Int(u64),
     Float(f64),
 }
@@ -99,16 +124,16 @@ pub struct StructDef<'a> {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExpressionKind<'a> {
     Literal(Literal<'a>),
-    Symbol(&'a str),
+    Symbol(Symbol<'a>),
     Field(Box<Expression<'a>>, &'a str),
     Operator(Box<Expression<'a>>, Operator, Box<Expression<'a>>),
     FunctionCall {
-        name: &'a str,
+        name: Symbol<'a>,
         args: Vec<Expression<'a>>,
         return_type: Type<'a>,
     },
     LetDef {
-        name: &'a str,
+        name: Symbol<'a>,
         initializer: Result<Box<Expression<'a>>, Type<'a>>,
     },
     If {
@@ -117,7 +142,7 @@ pub enum ExpressionKind<'a> {
         else_block: Option<Block<'a>>,
     },
     For {
-        name: &'a str,
+        name: Symbol<'a>,
         from: Box<Expression<'a>>,
         to: Box<Expression<'a>>,
         body: Block<'a>,
@@ -148,8 +173,8 @@ impl<'a> Block<'a> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDef<'a> {
-    pub name: &'a str,
-    pub args: Vec<(&'a str, Type<'a>)>,
+    pub name: Symbol<'a>,
+    pub args: Vec<(Symbol<'a>, Type<'a>)>,
     pub return_type: Type<'a>,
     pub body: Block<'a>,
 }
@@ -165,5 +190,5 @@ impl<'a> Expression<'a> {
 pub struct Program<'a> {
     pub structs: BTreeMap<&'a str, StructDef<'a>>,
     pub uniforms: BTreeMap<&'a str, Type<'a>>,
-    pub functions: BTreeMap<&'a str, FunctionDef<'a>>,
+    pub functions: BTreeMap<Symbol<'a>, FunctionDef<'a>>,
 }

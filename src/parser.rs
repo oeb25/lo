@@ -1,4 +1,4 @@
-use ast::{Literal, Operator, Primitive, Seperator, Type};
+use ast::{Literal, Operator, Primitive, Seperator, Type, Symbol};
 use std;
 
 impl Operator {
@@ -300,7 +300,7 @@ impl<'a> Into<Type<'a>> for Primitive {
 #[derive(Debug)]
 pub enum Expression<'a> {
     Literal(Literal<'a>),
-    Symbol(&'a str),
+    Symbol(Symbol<'a>),
     Operator(Box<Expression<'a>>, Operator, Box<Expression<'a>>),
     Field(Box<Expression<'a>>, &'a str),
     Block(Block<'a>),
@@ -314,13 +314,13 @@ pub enum Expression<'a> {
         else_block: Option<Block<'a>>,
     },
     For {
-        name: &'a str,
+        name: Symbol<'a>,
         from: Box<Expression<'a>>,
         to: Box<Expression<'a>>,
         body: Block<'a>,
     },
     LetDef {
-        name: &'a str,
+        name: Symbol<'a>,
         typ: Option<Type<'a>>,
         initializer: Option<Box<Expression<'a>>>,
     },
@@ -347,8 +347,8 @@ pub enum Decleration<'a> {
 
 #[derive(Debug)]
 pub struct FuncDef<'a> {
-    pub name: &'a str,
-    pub args: Vec<(&'a str, Type<'a>)>,
+    pub name: Symbol<'a>,
+    pub args: Vec<(Symbol<'a>, Type<'a>)>,
     pub return_type: Type<'a>,
     pub body: Block<'a>,
     pub is_default: bool,
@@ -384,7 +384,7 @@ fn parse_decleration<'a>(input: &mut Tokens<'a>) -> Decleration<'a> {
     match input.next().unwrap() {
         Token::Ident("fun") => {
             let name = if let Token::Ident(name) = input.next().unwrap() {
-                name
+                name.into()
             } else {
                 unimplemented!()
             };
@@ -398,7 +398,7 @@ fn parse_decleration<'a>(input: &mut Tokens<'a>) -> Decleration<'a> {
                     Token::Ident(arg_name) => {
                         expect!(Seperator::Colon);
                         let typ = parse_type(input);
-                        args.push((arg_name, typ));
+                        args.push((arg_name.into(), typ));
                         match input.next().unwrap() {
                             Token::Seperator(Seperator::Comma) => {}
                             Token::Seperator(Seperator::CloseParen) => {
@@ -652,7 +652,7 @@ fn rec_parse_expr<'a>(input: &mut Tokens<'a>, level: usize) -> Expression<'a> {
             }
             Token::Ident("for") => {
                 let name = if let Some(Token::Ident(name)) = input.next() {
-                    name
+                    name.into()
                 } else {
                     unimplemented!()
                 };
@@ -675,7 +675,7 @@ fn rec_parse_expr<'a>(input: &mut Tokens<'a>, level: usize) -> Expression<'a> {
             }
             Token::Ident("let") => {
                 let name = match input.next() {
-                    Some(Token::Ident(name)) => name,
+                    Some(Token::Ident(name)) => name.into(),
                     x => unimplemented!("{:?}", x),
                 };
 
@@ -701,9 +701,9 @@ fn rec_parse_expr<'a>(input: &mut Tokens<'a>, level: usize) -> Expression<'a> {
                     initializer,
                 }
             }
-            Token::Ident(name) => Expression::Symbol(name),
+            Token::Ident(name) => Expression::Symbol(name.into()),
             Token::Number(a) => Expression::Literal(Literal::Int(a.parse().unwrap())),
-            Token::String(a) => Expression::Literal(Literal::String(a)),
+            Token::String(a) => Expression::Literal(Literal::String(a.into())),
             Token::Float(a) => Expression::Literal(Literal::Float(a.parse().unwrap())),
             Token::Seperator(Seperator::OpenParen) => {
                 let inner = rec_parse_expr(input, 0);

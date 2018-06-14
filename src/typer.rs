@@ -1,6 +1,6 @@
 use ast::{
     Block, Expression, ExpressionKind, FunctionDef, Literal, Operator, Primitive, Program,
-    StructDef, Type,
+    StructDef, Type, Symbol,
 };
 pub use parser;
 
@@ -30,7 +30,7 @@ impl<'a> Expression<'a> {
             parser::Expression::FuncCall { fun, args } => {
                 let fun: &parser::Expression = fun;
                 let name = match fun {
-                    parser::Expression::Symbol(name) => name,
+                    parser::Expression::Symbol(name) => name.clone(),
                     x => unimplemented!("{:?}", x),
                 };
 
@@ -40,7 +40,7 @@ impl<'a> Expression<'a> {
                     .collect();
 
                 let signature = FunctionSignature {
-                    name,
+                    name: name.clone(),
                     args: args.iter().map(|arg| arg.typ.clone()).collect(),
                 };
 
@@ -109,7 +109,7 @@ impl<'a> Expression<'a> {
                 let typ = scope
                     .get_variable(name)
                     .expect(&format!("variable {:?} not found in scope", name));
-                Expression::new(ExpressionKind::Symbol(name), typ.clone())
+                Expression::new(ExpressionKind::Symbol(name.clone()), typ.clone())
             }
             parser::Expression::If {
                 condition,
@@ -169,14 +169,14 @@ impl<'a> Expression<'a> {
                 };
 
                 scope.register_variable(
-                    name,
+                    name.clone(),
                     match &initializer {
                         Ok(i) => i.typ.clone(),
                         Err(typ) => typ.clone(),
                     },
                 );
 
-                Expression::new(ExpressionKind::LetDef { name, initializer }, VOID)
+                Expression::new(ExpressionKind::LetDef { name: name.clone(), initializer }, VOID)
             }
             parser::Expression::For {
                 name,
@@ -188,12 +188,12 @@ impl<'a> Expression<'a> {
                 let to = box Expression::infer(scope, to);
 
                 let mut scope = scope.get_child();
-                scope.register_variable(name, Primitive::Int.into());
+                scope.register_variable(name.clone(), Primitive::Int.into());
                 let body = Block::infer(&mut scope, body);
 
                 Expression::new(
                     ExpressionKind::For {
-                        name,
+                        name: name.clone(),
                         from,
                         to,
                         body,
@@ -234,7 +234,7 @@ impl<'a> Block<'a> {
 
 impl<'a> FunctionDef<'a> {
     fn infer(scope: &mut Scope<'a>, func_decl: &parser::FuncDef<'a>) -> FunctionDef<'a> {
-        let name = func_decl.name;
+        let name = func_decl.name.clone();
         let args = func_decl.args.clone();
         let return_type = func_decl.return_type.clone();
         let body = Block::infer(scope, &func_decl.body);
@@ -252,7 +252,7 @@ impl<'a> FunctionDef<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct FunctionSignature<'a> {
-    name: &'a str,
+    name: Symbol<'a>,
     args: Vec<Type<'a>>,
 }
 
@@ -261,7 +261,7 @@ struct Scope<'a> {
     parent: Option<Box<Scope<'a>>>,
     structs: BTreeMap<&'a str, StructDef<'a>>,
     functions: BTreeMap<FunctionSignature<'a>, Type<'a>>,
-    variables: BTreeMap<&'a str, Type<'a>>,
+    variables: BTreeMap<Symbol<'a>, Type<'a>>,
 }
 
 impl<'a> Scope<'a> {
@@ -287,7 +287,7 @@ impl<'a> Scope<'a> {
         self.functions.insert(func, return_type);
     }
 
-    fn register_variable(&mut self, name: &'a str, typ: Type<'a>) {
+    fn register_variable(&mut self, name: Symbol<'a>, typ: Type<'a>) {
         self.variables.insert(name, typ);
     }
 
@@ -311,7 +311,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    fn get_variable(&self, name: &str) -> Option<&Type<'a>> {
+    fn get_variable(&self, name: &Symbol<'a>) -> Option<&Type<'a>> {
         match self.variables.get(name) {
             Some(typ) => Some(typ),
             None => match &self.parent {
@@ -354,7 +354,7 @@ impl<'a> Sources<'a> {
             {$($name:ident($($arg:ident),*): $ret:ident)*} => {$(
                 scope.register_function(
                     FunctionSignature {
-                        name: stringify!($name),
+                        name: stringify!($name).into(),
                         args: vec![$(
                             Type::from_str(stringify!($arg)),
                         )*],
@@ -380,25 +380,25 @@ impl<'a> Sources<'a> {
             mod(float, int): float
 
             // This is a mess...
-            printf(str): void
-            printf(str, int): void
-            printf(str, str): void
-            printf(str, str, str): void
-            printf(str, int, str): void
-            printf(str, int, int): void
-            printf(str, str, int): void
-            printf(str, str, str, str): void
-            printf(str, int, str, str): void
-            printf(str, int, int, str): void
-            printf(str, str, int, str): void
-            printf(str, str, str, int): void
-            printf(str, int, str, int): void
-            printf(str, int, int, int): void
-            printf(str, str, int, int): void
+            print(str): void
+            print(str, int): void
+            print(str, str): void
+            print(str, str, str): void
+            print(str, int, str): void
+            print(str, int, int): void
+            print(str, str, int): void
+            print(str, str, str, str): void
+            print(str, int, str, str): void
+            print(str, int, int, str): void
+            print(str, str, int, str): void
+            print(str, str, str, int): void
+            print(str, int, str, int): void
+            print(str, int, int, int): void
+            print(str, str, int, int): void
         };
 
         scope.register_struct(
-            "vec2",
+            "vec2".into(),
             StructDef {
                 name: "vec2",
                 fields: vec![("x", FLOAT), ("y", FLOAT)],
@@ -411,7 +411,7 @@ impl<'a> Sources<'a> {
                     parser::Decleration::FuncDef(func_decl) => {
                         scope.register_function(
                             FunctionSignature {
-                                name: func_decl.name,
+                                name: func_decl.name.clone(),
                                 args: func_decl.args.iter().map(|(_, typ)| typ.clone()).collect(),
                             },
                             func_decl.return_type.clone(),
@@ -419,7 +419,7 @@ impl<'a> Sources<'a> {
                     }
                     parser::Decleration::Uniforms { uniforms } => {
                         for (name, typ) in uniforms {
-                            scope.register_variable(name, typ.clone())
+                            scope.register_variable((*name).into(), typ.clone())
                         }
                     }
                     parser::Decleration::Struct(parser::StructDef { name, fields }) => {
@@ -440,10 +440,10 @@ impl<'a> Sources<'a> {
                         let mut scope = scope.get_child();
 
                         for (name, typ) in &func_decl.args {
-                            scope.register_variable(name, typ.clone());
+                            scope.register_variable(name.clone(), typ.clone());
                         }
                         let func = FunctionDef::infer(&mut scope, func_decl);
-                        functions.insert(func_decl.name, func);
+                        functions.insert(func_decl.name.clone(), func);
                     }
                     parser::Decleration::Struct(s) => {
                         let s = StructDef {

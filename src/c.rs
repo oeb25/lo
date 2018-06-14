@@ -2,25 +2,7 @@ use itertools::Itertools;
 #[allow(unused)]
 use std::borrow::Cow;
 
-use ast::{self, Literal, Operator, Primitive, StructDef, Type};
-
-#[derive(Debug, Clone)]
-struct Symbol<'a>(Cow<'a, str>);
-
-impl<'a, T> From<T> for Symbol<'a>
-where
-    T: Into<Cow<'a, str>>,
-{
-    fn from(t: T) -> Symbol<'a> {
-        Symbol(t.into())
-    }
-}
-
-impl<'a> ::std::fmt::Display for Symbol<'a> {
-    fn fmt(&self, writer: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-        write!(writer, "{}", self.0)
-    }
-}
+use ast::{self, Literal, Operator, Primitive, StructDef, Type, Symbol};
 
 #[derive(Debug, Clone)]
 enum LValue<'a> {
@@ -90,14 +72,14 @@ struct Namer {
 }
 
 impl Namer {
-    fn gen_name<'a>(&mut self, prefix: &str) -> String {
+    fn gen_name<'a>(&mut self, prefix: &str) -> Symbol<'a> {
         let name = format!("{}{}", prefix, self.counter);
         self.counter += 1;
         if self.used.contains(&name) {
             self.gen_name(prefix)
         } else {
             self.used.insert(name.clone());
-            name
+            name.into()
         }
     }
 }
@@ -109,11 +91,11 @@ impl<'a> ast::Program<'a> {
         let mut functions = vec![];
 
         for (_, func) in &self.functions {
-            let name = func.name.into();
+            let name = func.name.clone();
             let arguments = func
                 .args
                 .iter()
-                .map(|(name, typ)| ((*name).into(), typ.clone()))
+                .map(|(name, typ)| (name.clone(), typ.clone()))
                 .collect();
             let return_type = func.return_type.clone();
 
@@ -166,16 +148,16 @@ impl<'a> ast::Expression<'a> {
                     let typ = initializer.typ.clone();
                     let (mut pre, expr) = initializer.to_c_statements(namer);
 
-                    pre.push(Statement::Declaration(typ, (*name).into(), expr));
+                    pre.push(Statement::Declaration(typ, name.clone(), expr));
 
                     (pre, None)
                 }
                 Err(typ) => (
-                    vec![Statement::Declaration(typ.clone(), (*name).into(), None)],
+                    vec![Statement::Declaration(typ.clone(), name.clone(), None)],
                     None,
                 ),
             },
-            Ek::Symbol(name) => (vec![], Some(LValue::Symbol((*name).into()).into())),
+            Ek::Symbol(name) => (vec![], Some(LValue::Symbol(name.clone()).into())),
             Ek::Operator(lhs, op, rhs) => {
                 let (mut lpre, lhs) = lhs.to_c_statements(namer);
                 let (mut rpre, rhs) = rhs.to_c_statements(namer);
@@ -205,8 +187,53 @@ impl<'a> ast::Expression<'a> {
             Ek::FunctionCall {
                 name,
                 args,
-                return_type: _,
+                return_type,
             } => {
+                if *name == "print".into() {
+                    let mut args_i = args.iter();
+
+                    let s = match args_i.next().expect("no initial string passed to print") {
+                        ast::Expression {
+                            kind: Ek::Literal(Literal::String(s)),
+                            ..
+                        } => s,
+                        x => {
+                            unimplemented!("first argument of print must me string, found {:?}", x)
+                        }
+                    };
+
+                    let mut splitted = s.split("%");
+                    let mut f_s = splitted.next().unwrap().to_string();
+
+                    for segment in splitted {
+                        let next = args_i.next().expect(&format!("not enourgh arguments for print: {:?}", args));
+                        f_s += match &next.typ {
+                            Type::Primitive(p) => match p {
+                                Primitive::Int => "%d",
+                                Primitive::Str => "%s",
+                                x => unimplemented!("Cannot print primitive: {:?}", x),
+                            },
+                            x => unimplemented!("Cannot print type: {:?}", x),
+                        };
+                        f_s += segment;
+                    }
+
+                    let mut args = args.clone();
+                    args[0] = ast::Expression::new(
+                        Ek::Literal(Literal::String(f_s.into())),
+                        Type::Primitive(Primitive::Str),
+                    );
+
+                    return ast::Expression::new(
+                        Ek::FunctionCall {
+                            name: "printf".into(),
+                            args,
+                            return_type: return_type.clone(),
+                        },
+                        return_type.clone(),
+                    ).to_c_statements(namer);
+                }
+
                 let mut pre = vec![];
                 let mut new_args = vec![];
 
@@ -218,7 +245,7 @@ impl<'a> ast::Expression<'a> {
 
                 (
                     pre,
-                    Some(Expression::FunctionCall((*name).into(), new_args)),
+                    Some(Expression::FunctionCall(name.clone(), new_args)),
                 )
             }
             Ek::If {
@@ -228,7 +255,7 @@ impl<'a> ast::Expression<'a> {
             } => {
                 let (mut stmts, condition) = condition.to_c_statements(namer);
                 let condition = condition.expect(EXPRESSION_REQUIED);
-                let name: Cow<str> = namer.gen_name("if_block_name_").into();
+                let name = namer.gen_name("if_block_name_");
 
                 let (if_block, new_variable) = if_block.to_c_statements(name.clone(), namer);
                 let else_block = match else_block {
@@ -278,7 +305,7 @@ impl<'a> ast::Expression<'a> {
                 pre.append(&mut to_pre);
 
                 // Ignore return item of loop body
-                let (body, _) = body.to_c_statements("for_block_", namer);
+                let (body, _) = body.to_c_statements("for_block_".into(), namer);
 
                 let (from, to, body) = (
                     from.expect(EXPRESSION_REQUIED),
@@ -287,7 +314,7 @@ impl<'a> ast::Expression<'a> {
                 );
 
                 pre.push(Statement::For {
-                    name: (*name).into(),
+                    name: name.clone(),
                     from,
                     to,
                     body,
@@ -300,16 +327,15 @@ impl<'a> ast::Expression<'a> {
 }
 
 impl<'a> ast::Block<'a> {
-    fn to_c_statements<T: Into<Symbol<'a>>>(
+    fn to_c_statements(
         &self,
-        name: T,
+        name: Symbol<'a>,
         namer: &mut Namer,
     ) -> (Block<'a>, Option<(Statement<'a>, Expression<'a>)>) {
         let mut statements = vec![];
 
         let new_variable: Option<(_, Expression, _)> = if let Some(return_item) = &self.return_item
         {
-            let name = name.into();
             Some((
                 Statement::Declaration(self.return_type().clone(), name.clone(), None),
                 LValue::Symbol(name).into(),
