@@ -20,24 +20,20 @@ fun main(): int {
     let fiddo: Dog;
     fiddo.name = {
         let name = 'Fiddo';
-        printf('We\'ll call him %s!\n', name);
+        print("We'll call him %!\n", name);
         name
     };
-    fiddo.age = if 1 > 2 {
-        4
-    } else {
-        5
-    };
+    fiddo.age = 5;
 
-    printf('%s\'s age is %d in human years and %d in dog years!\n', fiddo.name, fiddo.age, factorial(fiddo.age));
+    print("%'s age is % in human years and % in dog years!\n", fiddo.name, fiddo.age, factorial(fiddo.age));
 
     for i in 0..fiddo.age + 1 {
-        printf('factorial(%d) = %d\n', i, factorial(i));
+        print('factorial(%) = %\n', i, factorial(i));
     };
 
-    printf('Who knew dog years where calculated using factorial!\n');
-    printf('%s is now %d years old!\n', fiddo.name, {
-        printf('Happy birthday %s!\n', fiddo.name);
+    print('Who knew dog years where calculated using factorial!\n');
+    print('% is now % years old!\n', fiddo.name, {
+        print('Happy birthday %!\n', fiddo.name);
         fiddo.age += 1;
         fiddo.age
     });

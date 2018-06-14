@@ -20,28 +20,22 @@ int main() {
     char* block_name1;
     {
         char* name = "Fiddo";
-        printf("We\'ll call him %s!\n", name);
+        printf("We'll call him %s!\n", name);
         block_name1 = name;
     };
     fiddo.name = block_name1;
-    int if_block_name_2;
-    if (1 > 2) {
-        if_block_name_2 = 4;
-    } else {
-        if_block_name_2 = 5;
-    };
-    fiddo.age = if_block_name_2;
-    printf("%s\'s age is %d in human years and %d in dog years!\n", fiddo.name, fiddo.age, factorial(fiddo.age));
+    fiddo.age = 5;
+    printf("%s's age is %d in human years and %d in dog years!\n", fiddo.name, fiddo.age, factorial(fiddo.age));
     for (int i = 0; i < fiddo.age + 1; ++i) {
         printf("factorial(%d) = %d\n", i, factorial(i));
     };
     printf("Who knew dog years where calculated using factorial!\n");
-    int block_name3;
+    int block_name2;
     {
         printf("Happy birthday %s!\n", fiddo.name);
         fiddo.age += 1;
-        block_name3 = fiddo.age;
+        block_name2 = fiddo.age;
     };
-    printf("%s is now %d years old!\n", fiddo.name, block_name3);
+    printf("%s is now %d years old!\n", fiddo.name, block_name2);
     return 0;
 }

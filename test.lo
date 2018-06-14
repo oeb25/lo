@@ -15,16 +15,12 @@ fun main(): int {
     let fiddo: Dog;
     fiddo.name = {
         let name = 'Fiddo';
-        print('We\'ll call him %!\n', name);
+        print("We'll call him %!\n", name);
         name
     };
-    fiddo.age = if 1 > 2 {
-        4
-    } else {
-        5
-    };
+    fiddo.age = 5;
 
-    print('%\'s age is % in human years and % in dog years!\n', fiddo.name, fiddo.age, factorial(fiddo.age));
+    print("%'s age is % in human years and % in dog years!\n", fiddo.name, fiddo.age, factorial(fiddo.age));
 
     for i in 0..fiddo.age + 1 {
         print('factorial(%) = %\n', i, factorial(i));

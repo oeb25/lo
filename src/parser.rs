@@ -135,6 +135,7 @@ fn lex<'a>(input: &'a str) -> Tokens<'a> {
                 c if c.is_alphabetic() => Ident(i),
                 c if c.is_numeric() => Number(i),
                 '\'' => String(c, false, i),
+                '"' => String(c, false, i),
                 c => {
                     if let Some(sep) = Seperator::try_from_char(c) {
                         tokens.push(sep.into());
