@@ -61,13 +61,13 @@ fun main(): int {
 
 ## Building Lez
 
-Building Lez requires a Rust compiler running nightly (currently written using `rustc 1.28.0-nightly`). Creating the binary is a simple as running
+Building Lez requires a Rust compiler running nightly (currently written using `rustc 1.28.0-nightly`). Creating the binary is as simple as running
 
 ```bash
 $ cargo build --release
 ```
 
-Now the Lez compiler can be found at `./target/release/lez`.
+Now the Lez compiler can be found at `./target/release/lez`, and moved to your path if you so desire.
 
 ## Running a program
 
@@ -78,4 +78,4 @@ $ ./target/release/lez hello.lez --gcc hello
 $ ./hello
 ```
 
-This first compiles the file using the `gcc` backend, and the runs the newly created program.
+This first compiles the file using the `gcc` backend, and the runs the newly created program. Multiple files can be specified at once.
