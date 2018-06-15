@@ -20,20 +20,20 @@ fun main(): int {
     let fiddo: Dog;
     fiddo.name = {
         let name = 'Fiddo';
-        print("We'll call him %!\n", name);
+        println("We'll call him %!", name);
         name
     };
     fiddo.age = 5;
 
-    print("%'s age is % in human years and % in dog years!\n", fiddo.name, fiddo.age, factorial(fiddo.age));
+    println("%'s age is % in human years and % in dog years!", fiddo.name, fiddo.age, factorial(fiddo.age));
 
     for i in 0..fiddo.age + 1 {
-        print('factorial(%) = %\n', i, factorial(i));
+        println('factorial(%) = %', i, factorial(i));
     };
 
-    print('Who knew dog years where calculated using factorial!\n');
-    print('% is now % years old!\n', fiddo.name, {
-        print('Happy birthday %!\n', fiddo.name);
+    println('Who knew dog years where calculated using factorial!');
+    println('% is now % years old!', fiddo.name, {
+        println('Happy birthday %!', fiddo.name);
         fiddo.age += 1;
         fiddo.age
     });
@@ -41,17 +41,17 @@ fun main(): int {
 }
 
 /*
-	We'll call him Fiddo!
-	Fiddo's age is 5 in human years and 120 in dog years!
-	factorial(0) = 0
-	factorial(1) = 1
-	factorial(2) = 2
-	factorial(3) = 6
-	factorial(4) = 24
-	factorial(5) = 120
-	Who knew dog years where calculated using factorial!
-	Happy birthday Fiddo!
-	Fiddo is now 6 years old!
+    We'll call him Fiddo!
+    Fiddo's age is 5 in human years and 120 in dog years!
+    factorial(0) = 0
+    factorial(1) = 1
+    factorial(2) = 2
+    factorial(3) = 6
+    factorial(4) = 24
+    factorial(5) = 120
+    Who knew dog years where calculated using factorial!
+    Happy birthday Fiddo!
+    Fiddo is now 6 years old!
 */
 ```
 

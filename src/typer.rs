@@ -422,6 +422,22 @@ impl<'a> Sources<'a> {
             fn print(str, int, str, int): void;
             fn print(str, int, int, int): void;
             fn print(str, str, int, int): void;
+
+            fn println(str): void;
+            fn println(str, int): void;
+            fn println(str, str): void;
+            fn println(str, str, str): void;
+            fn println(str, int, str): void;
+            fn println(str, int, int): void;
+            fn println(str, str, int): void;
+            fn println(str, str, str, str): void;
+            fn println(str, int, str, str): void;
+            fn println(str, int, int, str): void;
+            fn println(str, str, int, str): void;
+            fn println(str, str, str, int): void;
+            fn println(str, int, str, int): void;
+            fn println(str, int, int, int): void;
+            fn println(str, str, int, int): void;
         });
 
         for (_name, doc) in self.documents {

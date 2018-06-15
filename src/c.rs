@@ -194,7 +194,10 @@ impl<'a> ast::Expression<'a> {
                 args,
                 return_type,
             } => {
-                if *name == "print".into() {
+                let print = "print".into();
+                let println = "println".into();
+
+                if *name == print || *name == println {
                     let mut args_i = args.iter();
 
                     let s = match args_i.next().expect("no initial string passed to print") {
@@ -220,6 +223,10 @@ impl<'a> ast::Expression<'a> {
                             x => unimplemented!("Cannot print type: {:?}", x),
                         };
                         f_s += segment;
+                    }
+
+                    if *name == println {
+                        f_s += "\\n";
                     }
 
                     let mut args = args.clone();

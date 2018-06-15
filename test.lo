@@ -1,12 +1,6 @@
-struct APerson {
-    name: str,
-    weight: float,
-}
-
 struct Dog {
     name: str,
     age: int,
-    owner: APerson,
 }
 
 fun factorial(x: int): int {
@@ -21,21 +15,20 @@ fun main(): int {
     let fiddo: Dog;
     fiddo.name = {
         let name = 'Fiddo';
-        print("We'll call him %!\n", name);
+        println("We'll call him %!", name);
         name
     };
     fiddo.age = 5;
-    fiddo.owner.name = 'John';
 
-    print("%'s age is % in human years and % in dog years!\n", fiddo.name, fiddo.age, factorial(fiddo.age));
+    println("%'s age is % in human years and % in dog years!", fiddo.name, fiddo.age, factorial(fiddo.age));
 
     for i in 0..fiddo.age + 1 {
-        print('factorial(%) = %\n', i, factorial(i));
+        println('factorial(%) = %', i, factorial(i));
     };
 
-    print('Who knew dog years where calculated using factorial!\n');
-    print('% is now % years old!\n', fiddo.name, {
-        print('Happy birthday %!\n', fiddo.name);
+    println('Who knew dog years where calculated using factorial!');
+    println('% is now % years old!', fiddo.name, {
+        println('Happy birthday %!', fiddo.name);
         fiddo.age += 1;
         fiddo.age
     });
