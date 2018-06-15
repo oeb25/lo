@@ -1,8 +1,14 @@
 #include <stdio.h>
 
+typedef struct APerson {
+    char* name;
+    float weight;
+} APerson;
+
 typedef struct Dog {
     char* name;
     int age;
+    APerson owner;
 } Dog;
 
 int factorial(int x) {
@@ -25,6 +31,7 @@ int main() {
     };
     fiddo.name = block_name1;
     fiddo.age = 5;
+    fiddo.owner.name = "John";
     printf("%s's age is %d in human years and %d in dog years!\n", fiddo.name, fiddo.age, factorial(fiddo.age));
     for (int i = 0; i < fiddo.age + 1; ++i) {
         printf("factorial(%d) = %d\n", i, factorial(i));

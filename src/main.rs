@@ -1,4 +1,4 @@
-#![feature(nll, box_syntax)]
+#![feature(nll, box_syntax, const_fn)]
 
 extern crate itertools;
 
@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     let program = sources.type_check();
     let c_program = program.to_c();
-    let c_src = c_program.print();
+    let c_src = c_program.print(&program.typer);
 
     if args.run {
         unimplemented!("run")

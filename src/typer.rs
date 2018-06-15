@@ -1,29 +1,30 @@
 use ast::{
-    Block, Expression, ExpressionKind, FunctionDef, Literal, Operator, Primitive, Program,
-    StructDef, Type, Symbol,
+    Block, Expression, ExpressionKind, FunctionDef, Literal, Operator, Origin, Program,
+    StructDef, Symbol, TypeDef, TypeRef, Typer,
 };
 pub use parser;
 
 use std::collections::BTreeMap;
 
 impl<'a> Expression<'a> {
-    fn infer(scope: &mut Scope<'a>, expr: &parser::Expression<'a>) -> Expression<'a> {
+    fn infer(
+        typer: &Typer<'a>,
+        scope: &mut Scope<'a>,
+        expr: &parser::Expression<'a>,
+    ) -> Expression<'a> {
         match expr {
             parser::Expression::Field(expr, field) => {
-                let expr = Expression::infer(scope, expr);
+                let expr = Expression::infer(typer, scope, expr);
 
-                let s = match expr.typ {
-                    Type::UserDefined(name) => scope
-                        .get_struct(name)
-                        .expect(&format!("unable to find struct {:?}", name)),
-                    _ => unimplemented!(),
+                let (name, fields) = match typer.get(&expr.typ) {
+                    TypeDef::Struct { name, fields, .. } => (name, fields),
+                    _ => unimplemented!("unable to find struct"),
                 };
 
-                let (_, typ) = s
-                    .fields
+                let (_, typ) = fields
                     .iter()
                     .find(|(name, _)| name == field)
-                    .expect(&format!("field {:?} does not exist on {:?}", field, s.name));
+                    .expect(&format!("field {:?} does not exist on {:?}", field, name));
 
                 Expression::new(ExpressionKind::Field(box expr, field), typ.clone())
             }
@@ -36,7 +37,7 @@ impl<'a> Expression<'a> {
 
                 let args: Vec<_> = args
                     .iter()
-                    .map(|arg| Expression::infer(scope, arg))
+                    .map(|arg| Expression::infer(typer, scope, arg))
                     .collect();
 
                 let signature = FunctionSignature {
@@ -57,51 +58,53 @@ impl<'a> Expression<'a> {
                 }
             }
             parser::Expression::Operator(lhs, op, rhs) => {
-                let lhs = Expression::infer(scope, lhs);
-                let rhs = Expression::infer(scope, rhs);
-                let typ = match (&lhs.typ, op, &rhs.typ) {
-                    (a, Operator::Plus, b) | (a, Operator::Hyphen, b) => match (a, b) {
-                        (&INT, &INT) => INT,
-                        (a, b) if a.is_numeric() && b.is_numeric() => FLOAT,
-                        (&VEC2, &VEC2) => VEC2,
-                        (&VEC3, &VEC3) => VEC3,
-                        _ => unimplemented!("add {:?} {:?}", a, b),
-                    },
-                    (a, Operator::PlusEqual, b) => (match (a, b) {
-                        (&INT, &INT) => &INT,
-                        (a, b) if a.is_numeric() && b.is_numeric() => a,
-                        (&VEC2, &VEC2) => a,
-                        (&VEC3, &VEC3) => a,
-                        _ => unimplemented!("add assign {:?} {:?}", a, b),
-                    }).clone(),
-                    (a, Operator::Star, b) => {
-                        if a.is_int() && b.is_int() {
-                            INT
-                        } else if a.is_float() && b.is_float() {
-                            FLOAT
-                        } else if a.is_numeric() && b.is_numeric() {
-                            FLOAT
-                        } else {
-                            unimplemented!("mul {:?} {:?}", a, b)
-                        }
-                    }
-                    (a, Operator::Equal, b)
-                    | (a, Operator::NotEqual, b)
-                    | (a, Operator::DoubleEqual, b)
-                    | (a, Operator::Greater, b) => {
-                        if (a.is_numeric() && b.is_numeric()) || (a == b) {
-                            Type::Primitive(Primitive::Boolean)
-                        } else {
-                            unimplemented!("Type mismatch: {:?} == {:?}", a, b);
-                        }
-                    }
-                    (a, Operator::Divide, b) => match (a, b) {
-                        (&FLOAT, &VEC2) => Type::UserDefined("vec2"),
-                        (&INT, &INT) => INT,
-                        x => unimplemented!("divide {:?}", x),
-                    },
-                    x => unimplemented!("{:?}", x),
-                };
+                let lhs = Expression::infer(typer, scope, lhs);
+                let rhs = Expression::infer(typer, scope, rhs);
+                // TODO
+                let typ = lhs.typ;
+                // let typ = match (&lhs.typ, op, &rhs.typ) {
+                //     (a, Operator::Plus, b) | (a, Operator::Hyphen, b) => match (*a, *b) {
+                //         (INT, INT) => INT,
+                //         (INT, INT) | (INT, FLOAT) | (FLOAT, FLOAT) | (FLOAT, INT) => FLOAT,
+                //         (vec2, vec2) => vec2,
+                //         (vec3, vec3) => vec3,
+                //         _ => unimplemented!("add {:?} {:?}", a, b),
+                //     },
+                //     (a, Operator::PlusEqual, b) => (match (a, b) {
+                //         (INT, INT) => INT,
+                //         (a, b) if a.is_numeric() && b.is_numeric() => a,
+                //         (vec2, vec2) => a,
+                //         (vec3, vec3) => a,
+                //         _ => unimplemented!("add assign {:?} {:?}", a, b),
+                //     }).clone(),
+                //     (a, Operator::Star, b) => {
+                //         if a.is_INT() && b.is_INT() {
+                //             INT
+                //         } else if a.is_float() && b.is_float() {
+                //             FLOAT
+                //         } else if a.is_numeric() && b.is_numeric() {
+                //             FLOAT
+                //         } else {
+                //             unimplemented!("mul {:?} {:?}", a, b)
+                //         }
+                //     }
+                //     (a, Operator::Equal, b)
+                //     | (a, Operator::NotEqual, b)
+                //     | (a, Operator::DoubleEqual, b)
+                //     | (a, Operator::Greater, b) => {
+                //         if (a.is_numeric() && b.is_numeric()) || (a == b) {
+                //             Type::Primitive(Primitive::Boolean)
+                //         } else {
+                //             unimplemented!("Type mismatch: {:?} == {:?}", a, b);
+                //         }
+                //     }
+                //     (a, Operator::Divide, b) => match (a, b) {
+                //         (float, vec2) => Type::UserDefined("vec2"),
+                //         (INT, INT) => scope.typer,
+                //         x => unimplemented!("divide {:?}", x),
+                //     },
+                //     x => unimplemented!("{:?}", x),
+                // };
 
                 Expression::new(ExpressionKind::Operator(box lhs, *op, box rhs), typ)
             }
@@ -116,11 +119,11 @@ impl<'a> Expression<'a> {
                 if_block,
                 else_block,
             } => {
-                let condition = box Expression::infer(scope, condition);
+                let condition = box Expression::infer(typer, scope, condition);
 
-                let if_block = Block::infer(scope, if_block);
+                let if_block = Block::infer(typer, scope, if_block);
                 let else_block = match else_block {
-                    Some(else_block) => Some(Block::infer(scope, else_block)),
+                    Some(else_block) => Some(Block::infer(typer, scope, else_block)),
                     None => None,
                 };
 
@@ -128,7 +131,7 @@ impl<'a> Expression<'a> {
                 let else_return_type = else_block
                     .as_ref()
                     .map(|e| e.return_type())
-                    .unwrap_or(&VOID);
+                    .unwrap_or(typer.void());
                 assert_eq!(if_return_type, else_return_type);
 
                 let return_type = if_return_type.clone();
@@ -144,9 +147,9 @@ impl<'a> Expression<'a> {
             }
             parser::Expression::Literal(a) => {
                 let typ = match a {
-                    Literal::Int(_) => Type::Primitive(Primitive::Int),
-                    Literal::String(_) => Type::Primitive(Primitive::Str),
-                    Literal::Float(_) => Type::Primitive(Primitive::Float),
+                    Literal::Int(_) => typer.int(),
+                    Literal::Float(_) => typer.float(),
+                    Literal::String(_) => typer.str(),
                 };
                 Expression::new(ExpressionKind::Literal(a.clone()), typ)
             }
@@ -157,26 +160,32 @@ impl<'a> Expression<'a> {
             } => {
                 let initializer = match (initializer, typ) {
                     (Some(initializer), _) => {
-                        let infered_initializer = Expression::infer(scope, initializer);
+                        let infered_initializer = Expression::infer(typer, scope, initializer);
                         if let Some(typ) = typ {
-                            assert_eq!(&infered_initializer.typ, typ);
+                            assert_eq!(infered_initializer.typ, typer.convert(typ));
                         }
 
                         Ok(box infered_initializer)
                     }
-                    (None, Some(typ)) => Err(typ.clone()),
+                    (None, Some(typ)) => Err(typer.convert(typ)),
                     _ => unimplemented!("soz"),
                 };
 
                 scope.register_variable(
                     name.clone(),
                     match &initializer {
-                        Ok(i) => i.typ.clone(),
-                        Err(typ) => typ.clone(),
+                        Ok(i) => i.typ,
+                        Err(typ) => *typ,
                     },
                 );
 
-                Expression::new(ExpressionKind::LetDef { name: name.clone(), initializer }, VOID)
+                Expression::new(
+                    ExpressionKind::LetDef {
+                        name: name.clone(),
+                        initializer,
+                    },
+                    typer.void(),
+                )
             }
             parser::Expression::For {
                 name,
@@ -184,12 +193,12 @@ impl<'a> Expression<'a> {
                 to,
                 body,
             } => {
-                let from = box Expression::infer(scope, from);
-                let to = box Expression::infer(scope, to);
+                let from = box Expression::infer(typer, scope, from);
+                let to = box Expression::infer(typer, scope, to);
 
                 let mut scope = scope.get_child();
-                scope.register_variable(name.clone(), Primitive::Int.into());
-                let body = Block::infer(&mut scope, body);
+                scope.register_variable(name.clone(), typer.int());
+                let body = Block::infer(typer, &mut scope, body);
 
                 Expression::new(
                     ExpressionKind::For {
@@ -198,11 +207,11 @@ impl<'a> Expression<'a> {
                         to,
                         body,
                     },
-                    VOID,
+                    typer.void(),
                 )
             }
             parser::Expression::Block(block) => {
-                let block = Block::infer(scope, block);
+                let block = Block::infer(typer, scope, block);
                 let typ = block.return_type().clone();
                 Expression::new(ExpressionKind::Block(block), typ)
             }
@@ -211,19 +220,19 @@ impl<'a> Expression<'a> {
 }
 
 impl<'a> Block<'a> {
-    fn infer(scope: &mut Scope<'a>, block: &parser::Block<'a>) -> Block<'a> {
+    fn infer(typer: &Typer<'a>, scope: &mut Scope<'a>, block: &parser::Block<'a>) -> Block<'a> {
         let mut block_scope = scope.get_child();
 
         let mut statements = vec![];
 
         for stmt in &block.statements {
-            statements.push(Expression::infer(&mut block_scope, stmt));
+            statements.push(Expression::infer(typer, &mut block_scope, stmt));
         }
 
         let return_item = block
             .return_item
             .as_ref()
-            .map(|r| box Expression::infer(&mut block_scope, r));
+            .map(|r| box Expression::infer(typer, &mut block_scope, r));
 
         Block {
             statements,
@@ -233,13 +242,21 @@ impl<'a> Block<'a> {
 }
 
 impl<'a> FunctionDef<'a> {
-    fn infer(scope: &mut Scope<'a>, func_decl: &parser::FuncDef<'a>) -> FunctionDef<'a> {
+    fn infer(
+        typer: &Typer<'a>,
+        scope: &mut Scope<'a>,
+        func_decl: &parser::FuncDef<'a>,
+    ) -> FunctionDef<'a> {
         let name = func_decl.name.clone();
-        let args = func_decl.args.clone();
-        let return_type = func_decl.return_type.clone();
-        let body = Block::infer(scope, &func_decl.body);
+        let args = func_decl
+            .args
+            .iter()
+            .map(|(name, typ)| (name.clone(), typer.convert(typ)))
+            .collect();
+        let return_type = typer.convert(&func_decl.return_type);
+        let body = Block::infer(typer, scope, &func_decl.body);
 
-        assert_eq!(&func_decl.return_type, body.return_type());
+        assert_eq!(return_type, body.return_type());
 
         FunctionDef {
             name,
@@ -253,57 +270,40 @@ impl<'a> FunctionDef<'a> {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct FunctionSignature<'a> {
     name: Symbol<'a>,
-    args: Vec<Type<'a>>,
+    args: Vec<TypeRef>,
 }
 
 #[derive(Debug, Clone)]
 struct Scope<'a> {
     parent: Option<Box<Scope<'a>>>,
-    structs: BTreeMap<&'a str, StructDef<'a>>,
-    functions: BTreeMap<FunctionSignature<'a>, Type<'a>>,
-    variables: BTreeMap<Symbol<'a>, Type<'a>>,
+    functions: BTreeMap<FunctionSignature<'a>, TypeRef>,
+    variables: BTreeMap<Symbol<'a>, TypeRef>,
 }
 
 impl<'a> Scope<'a> {
     fn new() -> Scope<'a> {
         let parent = None;
-        let structs = BTreeMap::new();
         let functions = BTreeMap::new();
         let variables = BTreeMap::new();
 
         Scope {
             parent,
-            structs,
             functions,
             variables,
         }
     }
 
-    fn register_struct(&mut self, name: &'a str, s: StructDef<'a>) {
-        self.structs.insert(name, s);
-    }
-
-    fn register_function(&mut self, func: FunctionSignature<'a>, return_type: Type<'a>) {
+    fn register_function(&mut self, func: FunctionSignature<'a>, return_type: TypeRef) {
         self.functions.insert(func, return_type);
     }
 
-    fn register_variable(&mut self, name: Symbol<'a>, typ: Type<'a>) {
+    fn register_variable(&mut self, name: Symbol<'a>, typ: TypeRef) {
         self.variables.insert(name, typ);
     }
 
-    fn get_struct(&self, name: &'a str) -> Option<&StructDef<'a>> {
-        match self.structs.get(name) {
-            Some(s) => Some(s),
-            None => match &self.parent {
-                Some(parent) => parent.get_struct(name),
-                None => None,
-            },
-        }
-    }
-
-    fn get_function(&self, func: &FunctionSignature<'a>) -> Option<&Type<'a>> {
+    fn get_function(&self, func: &FunctionSignature<'a>) -> Option<TypeRef> {
         match self.functions.get(func) {
-            Some(func) => Some(func),
+            Some(func) => Some(*func),
             None => match &self.parent {
                 Some(parent) => parent.get_function(func),
                 None => None,
@@ -311,9 +311,9 @@ impl<'a> Scope<'a> {
         }
     }
 
-    fn get_variable(&self, name: &Symbol<'a>) -> Option<&Type<'a>> {
+    fn get_variable(&self, name: &Symbol<'a>) -> Option<TypeRef> {
         match self.variables.get(name) {
-            Some(typ) => Some(typ),
+            Some(typ) => Some(*typ),
             None => match &self.parent {
                 Some(parent) => parent.get_variable(name),
                 None => None,
@@ -330,15 +330,31 @@ impl<'a> Scope<'a> {
     }
 }
 
-const VOID: Type = Type::Primitive(Primitive::Void);
-const INT: Type = Type::Primitive(Primitive::Int);
-const FLOAT: Type = Type::Primitive(Primitive::Float);
-const VEC2: Type = Type::UserDefined("vec2");
-const VEC3: Type = Type::UserDefined("vec3");
-
 #[derive(Debug)]
 pub struct Sources<'a> {
     pub documents: BTreeMap<&'a str, parser::Document<'a>>,
+}
+
+macro_rules! builtins {
+    ($scope:expr, {$(fn $name:ident($($arg:expr),*): $ret:expr;)*}) => {$(
+        $scope.register_function(
+            FunctionSignature {
+                name: stringify!($name).into(),
+                args: vec![$($arg,)*],
+            },
+            $ret,
+        );
+    )*};
+    ($typer:expr, {$(struct $name:ident {$($field:ident: $typ:expr,)*})*}) => {$(
+        #[allow(non_snake_case, unused)]
+        let $name = $typer.register_type(
+            TypeDef::Struct {
+                name: stringify!($name).into(),
+                fields: vec![$((stringify!($field).into(), $typ),)*],
+                origin: Origin::Builtin,
+            },
+        );
+    )*};
 }
 
 impl<'a> Sources<'a> {
@@ -348,62 +364,65 @@ impl<'a> Sources<'a> {
         let mut uniforms = BTreeMap::new();
         let mut functions = BTreeMap::new();
 
+        let mut typer = Typer::new();
         let mut scope = Scope::new();
 
-        macro_rules! builtins {
-            {$($name:ident($($arg:ident),*): $ret:ident)*} => {$(
-                scope.register_function(
-                    FunctionSignature {
-                        name: stringify!($name).into(),
-                        args: vec![$(
-                            Type::from_str(stringify!($arg)),
-                        )*],
-                    },
-                    Type::from_str(stringify!($ret)),
-                );
-            )*}
-        }
+        let void = typer.void();
+        let int = typer.int();
+        let float = typer.float();
+        let str = typer.str();
 
-        builtins!{
-            texture(sampler2D, vec2): vec4
-            textureSize(sampler2D, int): vec2
+        builtins!(typer, {
+            struct vec2 {
+                x: float,
+                y: float,
+            }
+            struct vec3 {
+                x: float,
+                y: float,
+            }
+            struct vec4 {
+                x: float,
+                y: float,
+            }
+            struct sampler2D {}
+            struct Me {
+                pos: vec3,
+            }
+        });
 
-            vec2(float, float): vec2
-            vec2(float, int): vec2
-            vec2(int, float): vec2
+        builtins!(scope, {
+            fn texture(sampler2D, vec2): vec4;
+            fn textureSize(sampler2D, int): vec2;
 
-            vec3(vec4): vec3
-            vec3(float, float, float): vec3
-            vec3(int): vec3
+            fn vec2(float, float): vec2;
+            fn vec2(float, int): vec2;
+            fn vec2(int, float): vec2;
 
-            dot(vec3, vec3): float
-            mod(float, int): float
+            fn vec3(vec4): vec3;
+            fn vec3(float, float, float): vec3;
+            fn vec3(int): vec3;
+
+            fn dot(vec3, vec3): float;
+            fn mod(float, int): float;
 
             // This is a mess...
-            print(str): void
-            print(str, int): void
-            print(str, str): void
-            print(str, str, str): void
-            print(str, int, str): void
-            print(str, int, int): void
-            print(str, str, int): void
-            print(str, str, str, str): void
-            print(str, int, str, str): void
-            print(str, int, int, str): void
-            print(str, str, int, str): void
-            print(str, str, str, int): void
-            print(str, int, str, int): void
-            print(str, int, int, int): void
-            print(str, str, int, int): void
-        };
-
-        scope.register_struct(
-            "vec2".into(),
-            StructDef {
-                name: "vec2",
-                fields: vec![("x", FLOAT), ("y", FLOAT)],
-            },
-        );
+            fn print(str): void;
+            fn print(str, int): void;
+            fn print(str, str): void;
+            fn print(str, str, str): void;
+            fn print(str, int, str): void;
+            fn print(str, int, int): void;
+            fn print(str, str, int): void;
+            fn print(str, str, str, str): void;
+            fn print(str, int, str, str): void;
+            fn print(str, int, int, str): void;
+            fn print(str, str, int, str): void;
+            fn print(str, str, str, int): void;
+            fn print(str, int, str, int): void;
+            fn print(str, int, int, int): void;
+            fn print(str, str, int, int): void;
+        });
 
         for (_name, doc) in self.documents {
             for decl in &doc.declerations {
@@ -412,22 +431,30 @@ impl<'a> Sources<'a> {
                         scope.register_function(
                             FunctionSignature {
                                 name: func_decl.name.clone(),
-                                args: func_decl.args.iter().map(|(_, typ)| typ.clone()).collect(),
+                                args: func_decl
+                                    .args
+                                    .iter()
+                                    .map(|(_, typ)| typer.convert(typ))
+                                    .collect(),
                             },
-                            func_decl.return_type.clone(),
+                            typer.convert(&func_decl.return_type),
                         );
                     }
                     parser::Decleration::Uniforms { uniforms } => {
                         for (name, typ) in uniforms {
-                            scope.register_variable((*name).into(), typ.clone())
+                            scope.register_variable((*name).into(), typer.convert(typ))
                         }
                     }
                     parser::Decleration::Struct(parser::StructDef { name, fields }) => {
-                        scope.register_struct(
-                            name,
-                            StructDef {
-                                name,
-                                fields: fields.clone(),
+                        typer.register_type(TypeDef::Struct {
+                                name: (*name).into(),
+                                fields: fields
+                                    .iter()
+                                    .map(|(name, typ)| ((*name).into(), typer.convert(typ)))
+                                    .collect(),
+
+                                // TODO
+                                origin: Origin::Builtin,
                             },
                         );
                     }
@@ -440,21 +467,25 @@ impl<'a> Sources<'a> {
                         let mut scope = scope.get_child();
 
                         for (name, typ) in &func_decl.args {
-                            scope.register_variable(name.clone(), typ.clone());
+                            scope.register_variable(name.clone(), typer.convert(typ));
                         }
-                        let func = FunctionDef::infer(&mut scope, func_decl);
+                        let func = FunctionDef::infer(&typer, &mut scope, func_decl);
                         functions.insert(func_decl.name.clone(), func);
                     }
                     parser::Decleration::Struct(s) => {
                         let s = StructDef {
                             name: s.name,
-                            fields: s.fields.clone(),
+                            fields: s
+                                .fields
+                                .iter()
+                                .map(|(name, typ)| (*name, typer.convert(typ)))
+                                .collect(),
                         };
                         structs.insert(s.name, s);
                     }
                     parser::Decleration::Uniforms { uniforms: us } => {
                         for (name, typ) in us {
-                            uniforms.insert(*name, typ.clone());
+                            uniforms.insert(*name, typer.convert(typ));
                         }
                     }
                 }
@@ -462,6 +493,7 @@ impl<'a> Sources<'a> {
         }
 
         Program {
+            typer,
             structs,
             uniforms,
             functions,

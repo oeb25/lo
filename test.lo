@@ -1,6 +1,12 @@
+struct APerson {
+    name: str,
+    weight: float,
+}
+
 struct Dog {
     name: str,
     age: int,
+    owner: APerson,
 }
 
 fun factorial(x: int): int {
@@ -19,6 +25,7 @@ fun main(): int {
         name
     };
     fiddo.age = 5;
+    fiddo.owner.name = 'John';
 
     print("%'s age is % in human years and % in dog years!\n", fiddo.name, fiddo.age, factorial(fiddo.age));
 

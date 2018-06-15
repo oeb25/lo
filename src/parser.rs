@@ -1,5 +1,5 @@
-use ast::{Literal, Operator, Primitive, Seperator, Type, Symbol};
-use std;
+use ast::{Literal, Operator, Seperator, Symbol};
+use std::{borrow::Cow, fmt, vec};
 
 impl Operator {
     fn try_from_char(c: char) -> Option<Operator> {
@@ -74,8 +74,8 @@ impl<'a> Into<Token<'a>> for Seperator {
     }
 }
 
-impl std::fmt::Display for Operator {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+impl fmt::Display for Operator {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         use ast::Operator::*;
         write!(
             fmt,
@@ -250,7 +250,7 @@ fn lex<'a>(input: &'a str) -> Tokens<'a> {
 }
 
 struct Tokens<'a> {
-    pub tokens: std::vec::IntoIter<Token<'a>>,
+    pub tokens: vec::IntoIter<Token<'a>>,
     pub peeked: Option<Token<'a>>,
 }
 
@@ -270,31 +270,14 @@ impl<'a> Tokens<'a> {
     }
 }
 
-impl Primitive {
-    fn try_from(name: &str) -> Option<Primitive> {
-        match name {
-            "void" => Some(Primitive::Void),
-            "bool" => Some(Primitive::Boolean),
-            "int" => Some(Primitive::Int),
-            "float" => Some(Primitive::Float),
-            "str" => Some(Primitive::Str),
-            "sampler2D" => Some(Primitive::Sampler2D),
-            _ => None,
-        }
-    }
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Type<'a> {
+    Name(Cow<'a, str>),
 }
 
 impl<'a> Type<'a> {
     pub fn from_str(s: &'a str) -> Type<'a> {
-        Primitive::try_from(s)
-            .map(|p| p.into())
-            .unwrap_or_else(|| Type::UserDefined(s))
-    }
-}
-
-impl<'a> Into<Type<'a>> for Primitive {
-    fn into(self) -> Type<'a> {
-        Type::Primitive(self)
+        Type::Name(s.into())
     }
 }
 
@@ -424,7 +407,7 @@ fn parse_decleration<'a>(input: &mut Tokens<'a>) -> Decleration<'a> {
                     }
                 }
                 Token::Seperator(Seperator::OpenBrace) => {
-                    (Primitive::Void.into(), parse_block(input))
+                    (Type::Name("void".into()), parse_block(input))
                 }
                 x => unimplemented!("{:?}", x),
             };
@@ -505,13 +488,7 @@ fn parse_decleration<'a>(input: &mut Tokens<'a>) -> Decleration<'a> {
 
 fn parse_type<'a>(input: &mut Tokens<'a>) -> Type<'a> {
     match input.next().unwrap() {
-        Token::Ident(type_name) => {
-            if let Some(prim) = Primitive::try_from(type_name) {
-                prim.into()
-            } else {
-                Type::UserDefined(type_name)
-            }
-        }
+        Token::Ident(type_name) => Type::Name(type_name.into()),
         x => unimplemented!("{:?}", x),
     }
 }
@@ -608,6 +585,7 @@ fn rec_parse_expr<'a>(input: &mut Tokens<'a>, level: usize) -> Expression<'a> {
                             args,
                         };
                     }
+                    Some(Token::Seperator(Seperator::Colon)) => unimplemented!("heh"),
                     Some(Token::Operator(Operator::Dot)) => {
                         input.next();
 
