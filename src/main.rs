@@ -6,6 +6,7 @@ pub mod ast;
 pub mod c;
 pub mod parser;
 pub mod typer;
+pub mod instruction;
 
 #[derive(Debug)]
 struct Args {

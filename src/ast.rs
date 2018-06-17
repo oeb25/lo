@@ -182,6 +182,12 @@ pub struct Program<'a> {
     pub functions: BTreeMap<Symbol<'a>, FunctionDef<'a>>,
 }
 
+impl<'a> Program<'a> {
+    fn order_structs(&self) -> Vec<&StructDef<'a>> {
+        unimplemented!()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Origin<'a> {
     Builtin,
